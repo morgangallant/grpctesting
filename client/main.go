@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"railwaygrpc/pb"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
@@ -15,21 +19,45 @@ func main() {
 	}
 }
 
-const server = "grpc-testing.morgangallant.com:443"
+func call(ctx context.Context, url, method string, body, result proto.Message) error {
+	buf, err := protojson.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(buf))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		buf, _ = io.ReadAll(resp.Body)
+		return fmt.Errorf("grpc service at url %s returned non-ok status code (%d): %s", url, resp.StatusCode, buf)
+	}
+	buf, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := protojson.Unmarshal(buf, result); err != nil {
+		return err
+	}
+	return nil
+}
 
-// const server = "localhost:8080"
+// const server = "grpc-testing.morgangallant.com:443"
+
+const server = "localhost:8080"
 
 func run() error {
-	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "grpc-testing.morgangallant.com")))
-	if err != nil {
+	resp := &pb.NameResponse{}
+	if err := call(context.Background(), "http://localhost:8080/v1/example/name", "POST", &pb.NameRequest{Name: "Morgan"}, resp); err != nil {
 		return err
 	}
-	defer conn.Close()
-	client := pb.NewExampleClient(conn)
-	resp, err := client.Name(context.Background(), &pb.NameRequest{Name: "Morgan"})
-	if err != nil {
-		return err
-	}
-	log.Printf("Response: %s", resp.Response)
+	fmt.Printf("%s\n", resp.GetResponse())
 	return nil
 }

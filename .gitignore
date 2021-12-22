@@ -1,1 +1,2 @@
 pb/*.pb.go
+pb/*.pb.gw.go

@@ -1,8 +1,15 @@
 syntax = "proto3";
 option go_package = "./;pb";
 
+import "google/api/annotations.proto";
+
 service Example {
-	rpc Name(NameRequest) returns (NameResponse) {}
+	rpc Name(NameRequest) returns (NameResponse) {
+		option (google.api.http) = {
+			post: "/v1/example/name"
+			body: "*"
+		};
+	}
 }
 
 message NameRequest {
