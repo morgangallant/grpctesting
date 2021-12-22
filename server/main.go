@@ -2,16 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"os"
 	"railwaygrpc/pb"
-	"strings"
-	"time"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
@@ -36,36 +31,37 @@ func run() error {
 	if !ok {
 		port = "8080"
 	}
-	// lis, err := net.Listen("tcp", ":"+port)
-	// if err != nil {
-	// 	return err
-	// }
+	lis, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return err
+	}
 	// m := cmux.New(lis)
 	// grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 	// httpListener := m.Match(cmux.HTTP2(), cmux.HTTP1Fast())
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterExampleServer(grpcServer, &exampleServer{})
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, "OK")
-	})
-	server := &http.Server{
-		Addr: "0.0.0.0:" + port,
-		Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Printf("%s %s %s %v\n", r.Proto, r.Method, r.URL, r.Header)
-			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
-				fmt.Println("grpc")
-				grpcServer.ServeHTTP(w, r)
-			} else {
-				fmt.Println("http")
-				mux.ServeHTTP(w, r)
-			}
-		}), &http2.Server{}),
-		ReadTimeout:  time.Second,
-		WriteTimeout: time.Second * 10,
-	}
-	return server.ListenAndServe()
+	return grpcServer.Serve(lis)
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+	// 	fmt.Fprint(w, "OK")
+	// })
+	// server := &http.Server{
+	// 	Addr: "0.0.0.0:" + port,
+	// 	Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 		fmt.Printf("%s %s %s %v\n", r.Proto, r.Method, r.URL, r.Header)
+	// 		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+	// 			fmt.Println("grpc")
+	// 			grpcServer.ServeHTTP(w, r)
+	// 		} else {
+	// 			fmt.Println("http")
+	// 			mux.ServeHTTP(w, r)
+	// 		}
+	// 	}), &http2.Server{}),
+	// 	ReadTimeout:  time.Second,
+	// 	WriteTimeout: time.Second * 10,
+	// }
+	// return server.ListenAndServe()
 	// eg := errgroup.Group{}
 	// eg.Go(func() error { return grpcServer.Serve(grpcListener) })
 	// eg.Go(func() error { return web.Serve(httpListener) })
