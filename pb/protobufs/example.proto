@@ -1,0 +1,14 @@
+syntax = "proto3";
+option go_package = "./;pb";
+
+service Example {
+	rpc Name(NameRequest) returns (NameResponse) {}
+}
+
+message NameRequest {
+	string name = 1;
+}
+
+message NameResponse {
+	string response = 2;
+}
