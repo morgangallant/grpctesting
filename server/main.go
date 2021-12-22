@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
@@ -50,7 +52,7 @@ func run() error {
 	})
 	server := &http.Server{
 		Addr: "0.0.0.0:" + port,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("%s %s %s %v\n", r.Proto, r.Method, r.URL, r.Header)
 			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
 				fmt.Println("grpc")
@@ -59,7 +61,7 @@ func run() error {
 				fmt.Println("http")
 				mux.ServeHTTP(w, r)
 			}
-		}),
+		}), &http2.Server{}),
 		ReadTimeout:  time.Second,
 		WriteTimeout: time.Second * 10,
 	}
