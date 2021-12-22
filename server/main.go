@@ -2,11 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"railwaygrpc/pb"
+	"strings"
+	"time"
 
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
@@ -26,28 +31,32 @@ func (es *exampleServer) Name(ctx context.Context, req *pb.NameRequest) (*pb.Nam
 	}, nil
 }
 
+func router(server *grpc.Server, fallback *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			server.ServeHTTP(w, r)
+		} else {
+			fallback.ServeHTTP(w, r)
+		}
+	})
+}
+
 func run() error {
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
 		port = "8080"
 	}
-	lis, err := net.Listen("tcp", "0.0.0.0:"+port)
-	if err != nil {
-		return err
-	}
 	server := grpc.NewServer()
 	pb.RegisterExampleServer(server, &exampleServer{})
-	return server.Serve(lis)
-	// mux := http.NewServeMux()
-	// mux.HandleFunc("/", server.ServeHTTP)
-	// mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-	// 	fmt.Fprint(w, "OK")
-	// })
-	// ws := &http.Server{
-	// 	Addr:         "0.0.0.0:" + port,
-	// 	Handler:      mux,
-	// 	ReadTimeout:  time.Second,
-	// 	WriteTimeout: time.Second * 10,
-	// }
-	// return ws.ListenAndServe()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "OK")
+	})
+	ws := &http.Server{
+		Addr:         "0.0.0.0:" + port,
+		Handler:      h2c.NewHandler(router(server, mux), &http2.Server{}),
+		ReadTimeout:  time.Second,
+		WriteTimeout: time.Second * 10,
+	}
+	return ws.ListenAndServe()
 }
