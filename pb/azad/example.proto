@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 service Example {
 	rpc Name(NameRequest) returns (NameResponse) {
 		option (google.api.http) = {
-			post: "/v1/example/name"
+			post: "/rpc/example/name"
 			body: "*"
 		};
 	}

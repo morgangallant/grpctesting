@@ -55,7 +55,7 @@ const server = "localhost:8080"
 
 func run() error {
 	resp := &pb.NameResponse{}
-	if err := call(context.Background(), "http://localhost:8080/v1/example/name", "POST", &pb.NameRequest{Name: "Morgan"}, resp); err != nil {
+	if err := call(context.Background(), "http://localhost:8080/rpc/example/name", "POST", &pb.NameRequest{Name: "Morgan"}, resp); err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", resp.GetResponse())
