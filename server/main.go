@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"railwaygrpc/pb"
 	"strings"
+	"time"
 
-	"github.com/hkwi/h2c"
-	"github.com/soheilhy/cmux"
-	"golang.org/x/sync/errgroup"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
@@ -47,13 +46,13 @@ func run() error {
 	if !ok {
 		port = "8080"
 	}
-	lis, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return err
-	}
-	m := cmux.New(lis)
-	grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
-	httpListener := m.Match(cmux.HTTP2(), cmux.HTTP1Fast())
+	// lis, err := net.Listen("tcp", ":"+port)
+	// if err != nil {
+	// 	return err
+	// }
+	// m := cmux.New(lis)
+	// grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+	// httpListener := m.Match(cmux.HTTP2(), cmux.HTTP1Fast())
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterExampleServer(grpcServer, &exampleServer{})
@@ -61,14 +60,22 @@ func run() error {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "OK")
 	})
-	web := &http.Server{
-		Handler: h2c.Server{
-			Handler: mux,
-		},
+	server := &http.Server{
+		Addr: "0.0.0.0:" + port,
+		Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+				grpcServer.ServeHTTP(w, r)
+			} else {
+				mux.ServeHTTP(w, r)
+			}
+		}), &http2.Server{}),
+		ReadTimeout:  time.Second,
+		WriteTimeout: time.Second * 10,
 	}
-	eg := errgroup.Group{}
-	eg.Go(func() error { return grpcServer.Serve(grpcListener) })
-	eg.Go(func() error { return web.Serve(httpListener) })
-	eg.Go(func() error { return m.Serve() })
-	return eg.Wait()
+	return server.ListenAndServe()
+	// eg := errgroup.Group{}
+	// eg.Go(func() error { return grpcServer.Serve(grpcListener) })
+	// eg.Go(func() error { return web.Serve(httpListener) })
+	// eg.Go(func() error { return m.Serve() })
+	// return eg.Wait()
 }
