@@ -38,4 +38,16 @@ func run() error {
 	server := grpc.NewServer()
 	pb.RegisterExampleServer(server, &exampleServer{})
 	return server.Serve(lis)
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/", server.ServeHTTP)
+	// mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+	// 	fmt.Fprint(w, "OK")
+	// })
+	// ws := &http.Server{
+	// 	Addr:         "0.0.0.0:" + port,
+	// 	Handler:      mux,
+	// 	ReadTimeout:  time.Second,
+	// 	WriteTimeout: time.Second * 10,
+	// }
+	// return ws.ListenAndServe()
 }

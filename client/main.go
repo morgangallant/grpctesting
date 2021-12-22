@@ -6,6 +6,7 @@ import (
 	"railwaygrpc/pb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -14,8 +15,12 @@ func main() {
 	}
 }
 
+const server = "grpc-testing.morgangallant.com:443"
+
+// const server = "localhost:8080"
+
 func run() error {
-	conn, err := grpc.Dial("grpc-testing.morgangallant.com:80", grpc.WithInsecure())
+	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "*.morgangallant.com")))
 	if err != nil {
 		return err
 	}
