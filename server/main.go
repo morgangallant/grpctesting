@@ -53,7 +53,7 @@ func run() error {
 	server := &http.Server{
 		Addr: "0.0.0.0:" + port,
 		Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Printf("%s %s\n", r.Method, r.URL)
+			fmt.Printf("%s %s %s %v\n", r.Proto, r.Method, r.URL, r.Header)
 			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
 				fmt.Println("grpc")
 				grpcServer.ServeHTTP(w, r)
