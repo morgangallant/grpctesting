@@ -20,7 +20,7 @@ const server = "grpc-testing.morgangallant.com:443"
 // const server = "localhost:8080"
 
 func run() error {
-	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "*.morgangallant.com")))
+	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "grpc-testing.morgangallant.com")))
 	if err != nil {
 		return err
 	}
