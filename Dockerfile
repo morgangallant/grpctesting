@@ -1,6 +1,6 @@
 # Build Step
 FROM golang:alpine as build
-RUN apk add --no-cache protobuf bash
+RUN apk add --no-cache protobuf-dev bash
 ADD . /build
 WORKDIR /build
 RUN bash gen.sh
