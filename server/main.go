@@ -31,16 +31,6 @@ func (es *exampleServer) Name(ctx context.Context, req *pb.NameRequest) (*pb.Nam
 	}, nil
 }
 
-func router(server *grpc.Server, fallback *http.ServeMux) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			server.ServeHTTP(w, r)
-		} else {
-			fallback.ServeHTTP(w, r)
-		}
-	})
-}
-
 func run() error {
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
@@ -63,9 +53,12 @@ func run() error {
 	server := &http.Server{
 		Addr: "0.0.0.0:" + port,
 		Handler: h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Printf("%s %s\n", r.Method, r.URL)
 			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+				fmt.Println("grpc")
 				grpcServer.ServeHTTP(w, r)
 			} else {
+				fmt.Println("http")
 				mux.ServeHTTP(w, r)
 			}
 		}), &http2.Server{}),
